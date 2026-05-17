@@ -11,10 +11,11 @@ const BASE44_BASE_URL = "https://semper-fi-flow.base44.app/api";
 async function base44Request(path, method, body) {
   const response = await fetch(`${BASE44_BASE_URL}${path}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      "api_key": process.env.BASE44_API_KEY
-    },
+   headers: {
+  "Content-Type": "application/json",
+  "api_key": process.env.BASE44_API_KEY,
+  "X-Base44-App-Id": process.env.BASE44_APP_ID
+},
     body: body ? JSON.stringify(body) : undefined
   });
 
