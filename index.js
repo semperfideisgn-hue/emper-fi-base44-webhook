@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import emailMarketingRouter from "./emailMarketing.js";
 
 dotenv.config();
 
@@ -27,6 +28,8 @@ async function base44Request(path, method, body) {
 
   return data;
 }
+
+app.use("/email-marketing", emailMarketingRouter(base44Request));
 
 app.get("/", (req, res) => {
   res.send("Semper Fi Base44 Webhook Running");
