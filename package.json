@@ -9,6 +9,7 @@
   "dependencies": {
     "@base44/sdk": "^0.1.0",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.14"
   }
 }
