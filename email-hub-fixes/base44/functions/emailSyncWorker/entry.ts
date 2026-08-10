@@ -9,7 +9,33 @@ import nodemailer from 'npm:nodemailer@6.9.14';
 
 const APP_PUBLIC_URL = Deno.env.get('APP_PUBLIC_URL') || 'https://semper-fi-flow.base44.app';
 
-function makeTransport(account: any) {
+// ── Password decryption ───────────────────────────────────────────────────────
+// saveEmailAccount stores passwords AES-GCM-encrypted with the
+// EMAIL_ENCRYPTION_KEY secret, prefixed enc:v1:. Values without the prefix are
+// legacy plaintext (pre-migration) and are used as-is so sync keeps working
+// mid-migration.
+
+const ENC_PREFIX = 'enc:v1:';
+
+async function getEncryptionKey(): Promise<CryptoKey> {
+  const secret = Deno.env.get('EMAIL_ENCRYPTION_KEY') || '';
+  if (!secret) throw new Error('EMAIL_ENCRYPTION_KEY secret not set — add it under Settings → Secrets.');
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return crypto.subtle.importKey('raw', hash, 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+
+async function decryptPassword(stored: string): Promise<string> {
+  if (!stored || !stored.startsWith(ENC_PREFIX)) return stored;
+  const [ivB64, ctB64] = stored.slice(ENC_PREFIX.length).split(':');
+  if (!ivB64 || !ctB64) throw new Error('Stored password is malformed — re-save the account password.');
+  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+  const ct = Uint8Array.from(atob(ctB64), c => c.charCodeAt(0));
+  const key = await getEncryptionKey();
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(plain);
+}
+
+async function makeTransport(account: any) {
   const port = Number(account.smtp_port || 587);
   return nodemailer.createTransport({
     host: account.smtp_host || 'smtp.dreamhost.com',
@@ -17,7 +43,7 @@ function makeTransport(account: any) {
     secure: port === 465,
     auth: {
       user: account.username || account.email_address,
-      pass: account.password_encrypted,
+      pass: await decryptPassword(account.password_encrypted),
     },
   });
 }
@@ -47,7 +73,7 @@ async function handleSendEmail(message: any, fromAccount: any, base44: any): Pro
   const fromName = fromAccount.label || 'Semper Fi Design';
 
   try {
-    const transporter = makeTransport(fromAccount);
+    const transporter = await makeTransport(fromAccount);
     await transporter.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to,
@@ -119,7 +145,12 @@ async function handleSendCampaign(campaign: any, fromAccount: any, base44: any):
 
   const svc = base44.asServiceRole.entities;
   const nowIso = new Date().toISOString();
-  const transporter = makeTransport(fromAccount);
+  let transporter;
+  try {
+    transporter = await makeTransport(fromAccount);
+  } catch (err) {
+    return Response.json({ success: false, error: (err as Error).message });
+  }
 
   let sent = 0;
   let untracked = 0;
@@ -315,8 +346,8 @@ async function syncEmailsWithFullParse(account, base44) {
     const port = account.imap_port || 993;
     const username = account.username || account.email_address;
 
-    // ── SECURITY: read from password_encrypted — never log this value ────────
-    const password = account.password_encrypted;
+    // ── SECURITY: decrypt password_encrypted — never log this value ──────────
+    const password = await decryptPassword(account.password_encrypted);
 
     conn = await Deno.connectTls({ hostname, port, alpnProtocols: [] });
     result.connectionSuccess = true;
