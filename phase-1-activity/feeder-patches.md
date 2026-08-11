@@ -1,9 +1,10 @@
-# Phase 1 feeder patches — exact block swaps
+# Phase 1 feeder patches — exact block swaps (matched to LIVE Activity schema)
 
-Two automatic feeders prove the aggregation pattern: outbound email → Activity
-row, website inquiry → Activity row. Both are additions inside existing
-backend functions; both are wrapped so a failure can never break the send or
-the webhook.
+Verified against the deployed `Activity` entity: required fields are
+`client_id, activity_type, title, activity_date`; `source` must be one of
+`manual, email, ai, automation, project, billing, system`.
+
+Both feeders are wrapped so a failure can never break the send or the webhook.
 
 ## Feeder 1 — emailSyncWorker: outbound email → Activity
 
@@ -34,7 +35,7 @@ File: `base44/functions/emailSyncWorker/entry.ts`, inside `handleSendEmail`.
         activity_date: nowIso,
         created_by_name: fromName,
         direction: 'outbound',
-        source: 'email_hub',
+        source: 'email',
         visibility: 'internal_only',
       });
     } catch { /* timeline write is best-effort */ }
@@ -50,9 +51,7 @@ follow-up; without it, plain composes simply don't create timeline rows).
 ## Feeder 2 — websiteLeadWebhook: inquiry → Activity
 
 File: `base44/functions/websiteLeadWebhook/entry.ts`, immediately after the
-`WebsiteInquiry` record is created (search for `WebsiteInquiry.create`; add
-right after the created record is obtained — variable name in file is the
-created inquiry):
+`WebsiteInquiry` record is created (search for `WebsiteInquiry.create`):
 
 ```ts
     // Phase 1: feed the client timeline. Best-effort — never fail the webhook.
@@ -65,7 +64,7 @@ created inquiry):
         detail: messageValue || '',
         activity_date: new Date().toISOString(),
         direction: 'inbound',
-        source: 'webhook',
+        source: 'automation',
         visibility: 'internal_only',
       });
     } catch (e) {
@@ -78,16 +77,10 @@ Adjust the three local variable names (`resolvedClientId`, `nameValue`,
 they are the client id the webhook resolved and the name/message fields it
 extracted via `pick()`.
 
-## Order of application
-
-1. Create the `Activity` entity first (`Activity.entity.json`) — the UI starts
-   working the moment it exists (timeline tab + Add Note are already wired).
-2. Apply Feeder 1, then Feeder 2.
-
 ## Verification
 
-1. Open any client as admin → Timeline tab → Add Note → note appears.
-2. Submit a test form on a connected client site → `client_request` row appears
-   on that client's timeline.
-3. Confirm a non-admin staff login can see the timeline (RLS check), and that a
-   client portal login can NOT (Phase 1 is internal-only).
+1. Open any client as admin → Timeline tab → Add Note → note appears (this
+   already works — the entity is live).
+2. Send an email from Compose with a client context → `email` row appears.
+3. Submit a test form on a connected client site → `client_request` row
+   appears on that client's timeline.
