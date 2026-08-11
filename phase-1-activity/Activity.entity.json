@@ -1,0 +1,66 @@
+{
+  "comment": "Phase 1: the Activity entity the Client Detail Timeline UI already expects. ClientDetail.jsx filters Activity by client_id sorted by -activity_date; AddNoteModal.jsx creates records with exactly these fields; ActivityRow.jsx renders sentiment/pinned/flags/follow-up. Create with entity name 'Activity' (exact).",
+  "entityName": "Activity",
+  "entitySchema": {
+    "type": "object",
+    "properties": {
+      "client_id": { "type": "string", "description": "Client this activity belongs to" },
+      "project_id": { "type": "string" },
+      "task_id": { "type": "string" },
+      "invoice_id": { "type": "string" },
+      "lead_id": { "type": "string" },
+      "activity_type": {
+        "type": "string",
+        "enum": ["note", "phone_call", "email", "text", "meeting", "task", "client_request", "project_update", "approval", "revision", "file", "proposal", "estimate", "invoice", "payment", "support", "scope_change", "opportunity", "follow_up", "ai_action", "system_change"],
+        "default": "note"
+      },
+      "activity_subtype": { "type": "string", "description": "Free string; for notes uses NOTE_TYPES vocabulary (general, sales, project, ...)" },
+      "title": { "type": "string" },
+      "summary": { "type": "string", "description": "Short one-line summary (UI truncates to 140 chars)" },
+      "detail": { "type": "string", "description": "Full body; shown behind Show more" },
+      "activity_date": { "type": "string", "format": "date-time", "description": "When the activity occurred; timeline sorts on this" },
+      "created_by_name": { "type": "string" },
+      "direction": { "type": "string", "enum": ["inbound", "outbound", "internal"], "default": "internal" },
+      "source": { "type": "string", "enum": ["manual", "email_hub", "webhook", "agent", "system"], "default": "manual" },
+      "requires_follow_up": { "type": "boolean", "default": false },
+      "follow_up_date": { "type": "string", "format": "date" },
+      "sentiment": { "type": "string", "enum": ["positive", "neutral", "concerned", "at_risk"] },
+      "visibility": { "type": "string", "enum": ["internal_only", "client_visible"], "default": "internal_only" },
+      "pinned": { "type": "boolean", "default": false },
+      "flagged_opportunity": { "type": "boolean", "default": false },
+      "flagged_scope_change": { "type": "boolean", "default": false }
+    },
+    "required": ["client_id", "activity_type"],
+    "rls": {
+      "create": {
+        "$or": [
+          { "user_condition": { "role": "admin" } },
+          { "user_condition": { "role": "manager" } },
+          { "user_condition": { "role": "employee" } },
+          { "user_condition": { "role": "project_manager" } },
+          { "user_condition": { "role": "sales" } },
+          { "user_condition": { "role": "accountant" } },
+          { "user_condition": { "role": "content_manager" } }
+        ]
+      },
+      "read": {
+        "$or": [
+          { "user_condition": { "role": "admin" } },
+          { "user_condition": { "role": "manager" } },
+          { "user_condition": { "role": "employee" } },
+          { "user_condition": { "role": "project_manager" } },
+          { "user_condition": { "role": "sales" } },
+          { "user_condition": { "role": "accountant" } },
+          { "user_condition": { "role": "content_manager" } }
+        ]
+      },
+      "update": {
+        "$or": [
+          { "created_by_id": "{{user.id}}" },
+          { "user_condition": { "role": "admin" } }
+        ]
+      },
+      "delete": { "user_condition": { "role": "admin" } }
+    }
+  }
+}
