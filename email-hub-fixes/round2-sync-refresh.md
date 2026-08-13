@@ -1,5 +1,9 @@
 # Email Hub round 2 — "synced and connected, but nothing refreshed"
 
+> **SUPERSEDED by `round3-complete.md`.** That file contains these two fixes
+> plus MIME decoding and the stale-admin-check fix, consolidated so the patches
+> don't collide on the same code blocks. Apply round 3 instead of this file.
+
 Diagnosed against live data on 2026-08-13. The sync **worked** (4 inbound
 messages created 15:39:06, outbound test sends at 15:42/15:43), and the
 password is now encrypted (`enc:v1:` confirmed). Two separate defects made a
