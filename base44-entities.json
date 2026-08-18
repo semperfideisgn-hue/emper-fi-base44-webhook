@@ -1,0 +1,41 @@
+{
+  "comment": "Entity schemas for the email marketing module. Create these in the Base44 builder (Semper Fi Design Command Center, app 69fd188fa42401af8f18d436) or via the Base44 MCP create_entity_schema tool.",
+  "entities": {
+    "EmailSubscriber": {
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Subscriber email address (unique)" },
+        "name": { "type": "string", "description": "Subscriber name" },
+        "status": { "type": "string", "enum": ["subscribed", "unsubscribed"], "default": "subscribed" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Segmentation tags, e.g. clients, leads, newsletter" },
+        "client_id": { "type": "string", "description": "Optional link to a Client record" }
+      },
+      "required": ["email"]
+    },
+    "EmailCampaign": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Internal campaign name" },
+        "subject": { "type": "string" },
+        "from_name": { "type": "string", "default": "Semper Fi Design" },
+        "from_email": { "type": "string" },
+        "html_body": { "type": "string", "description": "Full HTML email body" },
+        "status": { "type": "string", "enum": ["draft", "sending", "sent"], "default": "draft" },
+        "sent_count": { "type": "number", "default": 0 },
+        "sent_date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "subject", "html_body"]
+    },
+    "EmailSend": {
+      "type": "object",
+      "properties": {
+        "campaign_id": { "type": "string" },
+        "subscriber_id": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["sent", "failed", "opened", "clicked", "unsubscribed"] },
+        "event_date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "status"]
+    }
+  }
+}
